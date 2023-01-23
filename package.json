@@ -1,0 +1,32 @@
+{
+  "name": "aoiwebtracker",
+  "version": "0.0.1",
+  "description": "Automatic Areas-of-Interest Tracker for Web Application, down to the word level!",
+  "main": "AOIWebTracker.js",
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oele-isis-vanderbilt/AOIWebTracker.git"
+  },
+  "keywords": [
+    "eye-tracking",
+    "areas-of-interest",
+    "automatic",
+    "web",
+    "word-level"
+  ],
+  "files": [
+    "src/*"
+  ],
+  "author": {
+    "name": "Eduardo Davalos",
+    "email": "eduardo.davalos.anaya@vanderbilt.edu"
+  },
+  "license": "GPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/oele-isis-vanderbilt/AOIWebTracker/issues"
+  },
+  "homepage": "https://github.com/oele-isis-vanderbilt/AOIWebTracker#readme"
+}
