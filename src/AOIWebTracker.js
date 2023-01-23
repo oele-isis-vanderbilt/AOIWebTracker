@@ -12,16 +12,12 @@ https://github.com/snipcart/vue-comments-overlay
 const defaultOptions = {
     drawCanvas: false,
     tagColorMap: {
-        DEFAULT: "rgba(255,0,0,1)",
-        DIV: "rgba(0,255,0,1)",
-        IMG: "rgba(0,0,255,1)",
-        TEXT: "rgba(0,0,255,1)"
+        DEFAULT: "rgba(255,0,0,0.1)",
+        DIV: "rgba(0,255,0,0.1)",
+        IMG: "rgba(0,0,255,0.1)",
+        TEXT: "rgba(0,0,255,0.5)"
     },
-    toTrackElements: [
-        // {tag: 'div', class: 'v-sidebar-menu vsm_collapsed', recursive: false, wordLevel: false},
-        // {tag: 'div', id: 'scr-main-div', recursive: true, wordLevel: true},
-        // {tag: 'span', recursive: true, wordLevel: true}
-    ]
+    toTrackElements: []
 }
 
 export const AOIWebTracker = {
@@ -189,7 +185,11 @@ export const AOIWebTracker = {
             }
         }
         else if ("id" in elementConfiguration ) { // by "id"
+            
             const element = document.getElementById(elementConfiguration.id);
+            if (element == null) {
+                return elementsRects
+            }
             const rectInfo = AOIWebTracker.getRectInfo(
                 element,
                 elementConfiguration.recursive,
@@ -223,7 +223,7 @@ export const AOIWebTracker = {
         return (
             rect.top >= 0 &&
             rect.left >= 0 &&
-            rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+            rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) ||
             rect.right <= (window.innerWidth || document.documentElement.clientWidth)
         );
     },
