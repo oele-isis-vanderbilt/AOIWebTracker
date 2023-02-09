@@ -2,7 +2,7 @@
   "name": "aoiwebtracker",
   "version": "0.0.1",
   "description": "Automatic Areas-of-Interest Tracker for Web Application, down to the word level!",
-  "main": "src/AOIWebTracker.js",
+  "main": "src/AOIWebTracker.ts",
   "scripts": {
     "test": "test"
   },
@@ -28,5 +28,8 @@
   "bugs": {
     "url": "https://github.com/oele-isis-vanderbilt/AOIWebTracker/issues"
   },
-  "homepage": "https://github.com/oele-isis-vanderbilt/AOIWebTracker#readme"
+  "homepage": "https://github.com/oele-isis-vanderbilt/AOIWebTracker#readme",
+  "dependencies": {
+    "mitt": "^3.0.0"
+  }
 }
