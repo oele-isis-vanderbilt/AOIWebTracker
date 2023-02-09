@@ -7,26 +7,25 @@ https://snipcart.com/blog/vue-js-plugin
 https://github.com/snipcart/vue-comments-overlay
 */
 
-// import { AOIDatabase } from "./AOIDatabase.js"
-
 const defaultOptions = {
-    drawCanvas: false,
-    tagColorMap: {
-        DEFAULT: "rgba(255,0,0,0.1)",
-        DIV: "rgba(0,255,0,0.1)",
-        IMG: "rgba(0,0,255,0.1)",
-        TEXT: "rgba(0,0,255,0.5)"
-    },
-    toTrackElements: []
+  emitter: null, 
+  drawCanvas: false,
+  tagColorMap: {
+    DEFAULT: "rgba(255,0,0,0.1)",
+    DIV: "rgba(0,255,0,0.1)",
+    IMG: "rgba(0,0,255,0.1)",
+    TEXT: "rgba(0,0,255,0.5)"
+  },
+  toTrackElements: [],
+  timeSpacing: 100
 }
 
 export const AOIWebTracker = {
     
     // Install required for Vue Plugin
-    install: (Vue, options) => {
+    install: (options) => {
 
         // Saving input parameters
-        AOIWebTracker.Vue = Vue;
         AOIWebTracker.options = {...defaultOptions, ...options};
 
         // Adding the event listener to trigger a screenshot
@@ -156,10 +155,13 @@ export const AOIWebTracker = {
                         AOIWebTracker.drawCanvas(AOIWebTracker.aoiDatabase[i]);
                     }
                 }
+
+                // Broadcast information via the Emitter
+                AOIWebTracker.options.emitter.emit('aoiwebtracker', AOIWebTracker.aoiDatabase)
+                AOIWebTracker.isTracking = false;
                 
-            }, 100);
-            
-            AOIWebTracker.isTracking = false;
+            }, AOIWebTracker.options.timeSpacing);
+          
         }
     },
 

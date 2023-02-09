@@ -6,15 +6,12 @@ Automatic Areas-of-Interest (AOI) Tracker for Web Applications, down to the word
 
 ![AOIWebTracker Demo](https://user-images.githubusercontent.com/40870026/214149541-997e9243-042b-4e65-a9f5-c458cd104d4a.gif)
 
-
 ## Features
 * Automatic Tracking of Areas-of-Interest
 * Tracking of elements based on ID, tag, or class
 * Recursive AOI searching and tracking
 * Word-level AOI tracking
-
-## Compatibility
-This package is only compatible with Vue (only tested on Vue 3). The plugin only relies on the ``document`` API, therefore it should be universal.
+* Search via `div`, `tag`, or `class`
 
 ## Installation
 As of now, the package is only available via ``npm``. Use the following command:
@@ -27,17 +24,24 @@ npm install aoiwebtracker
 
 To use the plugin, you are required to install it during the mounting of app. Here is an example:
 
-```vue3
-import { createApp } from 'vue'
-import App from '@/App.vue'
+```js
 import { AOIWebTracker } from 'aoiwebtracker'
+import mitt from 'mitt'
 
-// Create application
-const app = createApp(App)
+// Create the emitter
+const emitter = mitt()
 
-// Install plugin
-app.use(AOIWebTracker)
-    .mount('#app')
+// Install plugin (provide the emitter instance from mitt)
+tracker = new AOIWebTracker()
+tracker.install(
+    emitter: emitter,
+    drawCanvas: false,
+    toTrackElements: [
+        {id: 'example_id', recursive: true, wordLevel: true}, # search by id
+        {tag: 'span', recursive: true, wordLevel: false}, # search by tag
+        {class: "class_name" , recursive: false, wordLevel: true} # search by class
+    ]
+)
 ```
 
 During the installation of the plugin, there are parameters that can be set for specifying the search criteria, debugging tools, and default configuration.
