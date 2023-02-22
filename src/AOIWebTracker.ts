@@ -167,8 +167,6 @@ export default class AOIWebTracker {
   }
 
   captureAOI() {
-    
-    console.log(this.options)
 
     if (!this.isTracking) {
       this.isTracking = true
