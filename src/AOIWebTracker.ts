@@ -4,8 +4,19 @@ import mitt, { Emitter } from 'mitt'
 export interface IElementConfiguration {
   searchBy: 'id' | 'tag' | 'class'
   searchName: string
-  recursive: boolean
-  wordLevel: boolean
+  recursiveSearch?: boolean
+  saveChildren?: boolean
+  saveWords?: boolean
+  saveWordContainers?: boolean
+}
+
+const configurationDefaults: IElementConfiguration = {
+  searchBy: 'id',
+  searchName: '',
+  recursiveSearch: false,
+  saveChildren: false,
+  saveWords: false,
+  saveWordContainers: false
 }
 
 export interface ITagColorMap {
@@ -32,20 +43,30 @@ const defaultOptions = {
     IMG: "rgba(0,0,255,0.1)",
     TEXT: "rgba(0,0,255,0.5)"
   },
-  toTrackElements: [],
-  timeSpacing: 100
+  toTrackElements: [], 
+  timeSpacing: 200
 } as IOptions
 
+interface ConciseDOMRect{
+  x: string
+  y: string
+  w: string
+  h: string
+}
+
 interface IWordRectData {
-  rectData: DOMRect
+  rectData: ConciseDOMRect
   text: string
 }
 
-interface IResponseRectData {
-  tagName: string
-  elementRect: DOMRect
-  childrenRectData: Array<IResponseRectData>
-  wordsRectData: Array<IWordRectData>
+interface IAOIDatabase {
+  meta: string[]
+  tagName: string[]
+  uuid: string[]
+  x: string[]
+  y: string[]
+  w: string[]
+  h: string[]
 }
 
 export default class AOIWebTracker {
@@ -53,13 +74,24 @@ export default class AOIWebTracker {
   canvas: HTMLCanvasElement
   canvasContext: CanvasRenderingContext2D | null
   tagWordCheck: Array<string>
-  aoiDatabase: Array<any>
+  aoiDatabase: IAOIDatabase
+  aoiCounter: number
   isTracking: boolean
 
   constructor() {
   
     // Initial values of state variables
     this.options = defaultOptions
+    this.aoiDatabase = {
+      meta: [],
+      tagName: [],
+      uuid: [],
+      x: [],
+      y: [],
+      w: [],
+      h: [],
+    }
+    this.aoiCounter = 0
     
     // Set that the canvas covers the entire page so we can draw anywhere
     this.canvas = document.createElement('canvas')
@@ -70,8 +102,6 @@ export default class AOIWebTracker {
     this.canvas.style.position = 'fixed'
     this.canvas.style.left = '0'
     this.canvas.style.top = '0'
-    // this.canvas.margin = '0'
-    // this.canvas.padding = '0'
     this.canvas.style.zIndex='1000000'
     this.canvas.style.pointerEvents='none'
 
@@ -82,13 +112,17 @@ export default class AOIWebTracker {
     document.body.appendChild(this.canvas)
 
     // List of tags to look and check for words
-    this.tagWordCheck = ['P', 'A', 'H1', 'H2', 'H3', 'H4', 'H5', 'SPAN']
-    this.aoiDatabase = []
+    this.tagWordCheck = ['P', 'A', 'H1', 'H2', 'H3', 'H4', 'H5', 'SPAN', 'LI', 'BUTTON']
     this.isTracking = false
   }
     
     // Install required for Vue Plugin
   install(options: IOptions) {
+
+    // Process the configuration options
+    for (let i = 0; i < options.toTrackElements.length; i++){
+      options.toTrackElements[i] = {...configurationDefaults, ...options.toTrackElements[i]}
+    }
 
     // Saving input parameters
     this.options = {...defaultOptions, ...options}
@@ -132,37 +166,35 @@ export default class AOIWebTracker {
     // Draw the bounding box on the html
     if (this.canvasContext instanceof CanvasRenderingContext2D){
       this.canvasContext.fillStyle = color
-      this.canvasContext.fillRect(rect.x, rect.y, rect.width, rect.height)
+      this.canvasContext.fillRect(
+        rect.x*0.995, 
+        rect.y, 
+        rect.width*0.95, 
+        rect.height
+      )
     }
   }
 
-  drawCanvas(elementsRectData: Array<IResponseRectData>) {
+  drawCanvas() {
 
-    for (let i = 0; i < elementsRectData.length; i++){
+    for (let i = 0; i < this.aoiDatabase.meta.length; i++){
       // Extract the current level element data
-      const elementRect = elementsRectData[i]
+      const entryRect = new DOMRect(
+        Number(this.aoiDatabase.x[i]),
+        Number(this.aoiDatabase.y[i]),
+        Number(this.aoiDatabase.w[i]),
+        Number(this.aoiDatabase.h[i])
+      )
+      const entryTag = this.aoiDatabase.tagName[i]
 
       // Obtain the color from the tags
       let color = this.options.tagColorMap.DEFAULT
-      if (elementRect.tagName in this.options.tagColorMap) {
-        color = this.options.tagColorMap[elementRect.tagName]
+      if (entryTag in this.options.tagColorMap) {
+        color = this.options.tagColorMap[entryTag]
       }
 
       // Draw the bounding box
-      this.drawBoundingBox(elementRect.elementRect, color)
-
-      // Draw children if available
-      if ("childrenRectData" in elementRect){
-        this.drawCanvas(elementRect.childrenRectData)
-      }
-
-      // Draw words if available
-      if ("wordsRectData" in elementRect){
-        color = this.options.tagColorMap.TEXT
-        for (let j = 0; j < elementRect.wordsRectData.length; j++){
-          this.drawBoundingBox(elementRect.wordsRectData[j].rectData, color)
-        }
-      }
+      this.drawBoundingBox(entryRect, color)
     }
   }
 
@@ -170,6 +202,18 @@ export default class AOIWebTracker {
 
     if (!this.isTracking) {
       this.isTracking = true
+
+      // Reset the database
+      this.aoiDatabase = {
+        meta: [],
+        tagName: [],
+        uuid: [],
+        x: [],
+        y: [],
+        w: [],
+        h: [],
+      }
+      this.aoiCounter = 0
       
       // Prevent calling methods too fast (before the document is 
       // rendered correctly and fully)
@@ -178,15 +222,13 @@ export default class AOIWebTracker {
         // Track the desired elements
         for (let i = 0; i < this.options.toTrackElements.length; i++) {
           const toTrackElement = this.options.toTrackElements[i]
-          this.aoiDatabase[i] = this.trackElement(toTrackElement)
+          this.trackElement(toTrackElement)
         }
         
         // Reconfigure the canvas as needed
         if (this.options.drawCanvas) {
           this.configureCanvas()
-          for (let i = 0; i < this.options.toTrackElements.length; i++) {
-            this.drawCanvas(this.aoiDatabase[i])
-          }
+          this.drawCanvas()
         }
 
         // Broadcast information via the Emitter
@@ -199,24 +241,20 @@ export default class AOIWebTracker {
   }
 
 
-  trackElement(elementConfiguration: IElementConfiguration): Array<IResponseRectData> {
+  trackElement(elementConfiguration: IElementConfiguration) {
       
-    const elementsRects: Array<IResponseRectData> = []
-
-    // if ("class" in elementConfiguration) {
     switch(elementConfiguration.searchBy){
       case "id": {
       
         const element = document.getElementById(elementConfiguration.searchName)
         if (element == null) {
-          return elementsRects
+          break
         }
-        const rectInfo = this.getRectInfo(
+        this.processElement(
           element,
-          elementConfiguration.recursive,
-          elementConfiguration.wordLevel
+          elementConfiguration,
+          this.aoiCounter
         )
-        elementsRects.push(rectInfo)
 
         break
       }
@@ -228,12 +266,11 @@ export default class AOIWebTracker {
         for (let i = 0; i < elements.length; i++) {
             
           const element = elements[i]
-          const rectInfo = this.getRectInfo(
+          this.processElement(
             element, 
-            elementConfiguration.recursive, 
-            elementConfiguration.wordLevel
+            elementConfiguration,
+            this.aoiCounter
           )
-          elementsRects.push(rectInfo)
 
         }
 
@@ -246,12 +283,11 @@ export default class AOIWebTracker {
         for (let i = 0; i < elements.length; i++) {
             
           const element = elements[i]
-          const rectInfo = this.getRectInfo(
+          this.processElement(
             element, 
-            elementConfiguration.recursive, 
-            elementConfiguration.wordLevel
+            elementConfiguration,
+            this.aoiCounter
           )
-          elementsRects.push(rectInfo)
 
         }
       break
@@ -261,7 +297,6 @@ export default class AOIWebTracker {
         console.log(elementConfiguration + " is invalid!")
       }
     }
-    return elementsRects
   }
 
 
@@ -275,19 +310,73 @@ export default class AOIWebTracker {
   }
 
 
-  getRectInfo(element: HTMLElement | Element, recursive: boolean, wordLevel: boolean): IResponseRectData {
+  processElement(element: HTMLElement | Element, configuration: IElementConfiguration, parentUuid: number) {
 
-    const responseRectData = {
-      tagName: element.tagName,
-      elementRect: element.getBoundingClientRect(),
-      childrenRectData: [],
-      wordsRectData: []
-    } as IResponseRectData
+    // Determine if we need to save this element information
+    let saveElementData = false
+    
+    if (configuration.saveChildren){
+      saveElementData = true
+    }
+    else{
+      switch(configuration.searchBy) {
+        case "id": {
+          if (element.id == configuration.searchName) {
+            saveElementData = true 
+          }
+          break
+        }
+        case "class": {
+          if (element.className == configuration.searchName){
+            saveElementData = true
+          }
+          break
+        }
+        case "tag": {
+          if (element.tagName == configuration.searchName) {
+            saveElementData = true
+          }
+          break
+        }
+        default: {
+          console.log(configuration + " is invalid!")
+          return
+        }
+      }
+    }
+   
+    // Get element rect, we will needed it regardless if we record the element
+    const rect = element.getBoundingClientRect()
+    let elementUuid = 0
 
-    if (recursive && this.isInViewPort(responseRectData.elementRect)) {
+    if (saveElementData) {
+      // Get element information
+      const conciseRect: ConciseDOMRect = {
+        x: rect.x.toFixed(3),
+        y: rect.y.toFixed(3),
+        w: rect.width.toFixed(3),
+        h: rect.height.toFixed(3)
+      }
+      elementUuid = this.aoiCounter
+      this.aoiCounter += 1
+
+      // Make an entry to the database ()
+      this.aoiDatabase.meta.push('' + element.id + "," + element.className) 
+      this.aoiDatabase.tagName.push(element.tagName)
+      this.aoiDatabase.uuid.push(elementUuid.toString())
+      this.aoiDatabase.x.push(conciseRect.x)
+      this.aoiDatabase.y.push(conciseRect.y)
+      this.aoiDatabase.w.push(conciseRect.w)
+      this.aoiDatabase.h.push(conciseRect.h)
+
+    } else {
+      elementUuid = parentUuid
+    }
+
+    if (configuration.recursiveSearch && this.isInViewPort(rect)) {
 
       for (let i = 0; i < element.childElementCount; i++) {
-        responseRectData.childrenRectData.push(this.getRectInfo(element.children[i], recursive, wordLevel))
+        this.processElement(element.children[i], configuration, elementUuid)
       }
 
       if (this.tagWordCheck.includes(element.tagName)){
@@ -299,14 +388,55 @@ export default class AOIWebTracker {
           wordsRectData = wordsRectData.concat(this.wordSearching(node))
         }
 
+        // If requested the containers, this could override the save criteria
+        if (wordsRectData.length != 0 && configuration.saveWordContainers && !saveElementData) {
+          
+          // Get element information
+          const conciseRect: ConciseDOMRect = {
+            x: rect.x.toFixed(3),
+            y: rect.y.toFixed(3),
+            w: rect.width.toFixed(3),
+            h: rect.height.toFixed(3)
+          }
+          elementUuid = this.aoiCounter
+          this.aoiCounter += 1
+
+          // Make an entry to the database ()
+          this.aoiDatabase.meta.push('' + element.id + "," + element.className) 
+          this.aoiDatabase.tagName.push(element.tagName)
+          this.aoiDatabase.uuid.push(elementUuid.toString())
+          this.aoiDatabase.x.push(conciseRect.x)
+          this.aoiDatabase.y.push(conciseRect.y)
+          this.aoiDatabase.w.push(conciseRect.w)
+          this.aoiDatabase.h.push(conciseRect.h)
+
+          // Marking that the words use this as the parent
+          parentUuid = elementUuid
+        }
+
         // If we found data, store it
-        if (wordsRectData.length != 0) {
-          responseRectData.wordsRectData = wordsRectData
+        if (wordsRectData.length != 0 && configuration.saveWords) {
+          for (let k = 0; k < wordsRectData.length; k++) {
+ 
+            // Make word uuid
+            const wordUuid = this.aoiCounter
+            this.aoiCounter += 1
+
+            // Make concise Rect information
+            const conciseRect: ConciseDOMRect = wordsRectData[k].rectData
+
+            // Make an entry to the database ()
+            this.aoiDatabase.meta.push(wordsRectData[k].text) 
+            this.aoiDatabase.tagName.push('TEXT')
+            this.aoiDatabase.uuid.push(wordUuid.toString())
+            this.aoiDatabase.x.push(conciseRect.x)
+            this.aoiDatabase.y.push(conciseRect.y)
+            this.aoiDatabase.w.push(conciseRect.w)
+            this.aoiDatabase.h.push(conciseRect.h)
+          }
         }
       }
     }
-
-    return responseRectData
   }
 
 
@@ -341,8 +471,14 @@ export default class AOIWebTracker {
 
       // Get word data and store
       const rect = range.getBoundingClientRect()
+      const conciseRect: ConciseDOMRect = {
+        x: rect.x.toFixed(3),
+        y: rect.y.toFixed(3),
+        w: rect.width.toFixed(3),
+        h: rect.height.toFixed(3)
+      }
       wordsRectData.push({
-        rectData: rect,
+        rectData: conciseRect,
         text: words[j]
       })
 

@@ -1,6 +1,6 @@
 {
   "name": "aoiwebtracker",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Automatic Areas-of-Interest Tracker for Web Application, down to the word level!",
   "main": "src/AOIWebTracker.ts",
   "scripts": {
